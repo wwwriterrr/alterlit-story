@@ -1,0 +1,26 @@
+# ── 7. api/urls.py (общий файл API, /api/v1/…) ─────────────────────────────────
+#     path('story/', include('api.story.urls')),
+
+
+# ── 8. Шаблон главной ───────────────────────────────────────────────────────────
+# Блок <div id="fair-wrap">…</div> и его <script> с fair.lightSlider(…) — под условие; сначала
+# остров только у вас:
+#
+#     {% if request.user.id == 1 %}
+#         <div id="alterlit-story" data-csrf="{{ csrf_token }}"></div>
+#     {% else %}
+#         … старый #fair-wrap и скрипт lightSlider как есть …
+#     {% endif %}
+#
+# и подключить сборку (в блоке стилей и скриптов страницы, при том же условии):
+#
+#     <link rel="stylesheet" href="/assets/story/story.css?v=1">
+#     <script type="module" src="/assets/story/story.js?v=1"></script>
+#
+# Остров встаёт туда же, где был #fair-wrap (position: absolute, top: 70px), с теми же размерами
+# кружков — отступ #alterlit (--pad-top) в шаблоне менять не нужно. Прилипание к шапке при
+# прокрутке (раньше ScrollMagic + классы fix/min) остров делает сам; старые сцены ScrollMagic
+# ищут #fair-wrap — без него они ничего не делают.
+#
+# Когда остров будет у всех: удалить #fair-wrap, его стили (#fair…, #fair-wrap…), скрипт lightSlider
+# на главной, сцены ScrollMagic для #fair-wrap и _add_fair_handler / обработчики #fair .f-link в base.html.

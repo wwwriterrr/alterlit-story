@@ -1,0 +1,52 @@
+# Ярмарка тщеславия v2 — остров React над лентой главной. Бэк — api/story/, параллельно
+# старому (#fair-wrap в шаблоне главной, select_ebloscope / selectscope, Post.post_to_story не трогаем).
+#
+#   GET  /api/v1/story/                    — 20 последних историй ярмарки, новые сверху (по story_date);
+#                                            остальным статус меняется вручную
+#        → {"items": [{"id", "url", "slogan", "date", "category": {"slug", "title"} | null,
+#                      "author": {"id", "username", "nickname", "avatar", "url", "marks"}}],
+#           "viewer": {"id": int | null}}
+#   GET  /api/v1/story/<id>/               — история целиком для просмотра «как сториз»
+#        → {...как в списке, "title", "published", "categories", "text" (строки без HTML),
+#           "image": {"src", "full", "preload", "width", "height", …} | null,
+#           "counts": {"likes", "comments", "liked"}}; 404 — не история ярмарки
+#        Лайк — старой ручкой POST /likes/post/<id>/, как в ленте постов.
+#   GET  /api/v1/story/candidates/         — свои публикации, которые можно разместить (вход обязателен)
+#   GET  /api/v1/story/candidates/?before=<id>
+#        → {"posts": [{"id", "url", "title", "excerpt", "date", "status", "categories", "duplicate"}],
+#           "more": bool,
+#           на первой странице "offer": {"price", "free", "slogan": {"min", "max"}, "allowed", "reason",
+#                                       "rules_url"}}
+#   POST /api/v1/story/  {"post_id": int, "slogan": "…"}  — разместить (вход обязателен, X-CSRFToken)
+#        → 201 {"item": {...история} | null, "charged": bool}
+#        → 400/403/404 {"detail": "…"} — текст для пользователя (длина девиза, «Публикация не найдена»,
+#          «Операция запрещена», причины из Post.can_story_publish / post_to_story / оплаты)
+#
+# Правила — в одном месте (rules.py), как в select_ebloscope и Post.post_to_story:
+#   • показываем: post_type="story", статусы «опубликовано» и «в профиле», сайт по request.mode,
+#     story_date задана; порядок — story_date, id; только 20 последних;
+#   • разместить можно: свои post / creative в статусах «опубликовано» и «в профиле» своего сайта;
+#     с правом blog.add_post — и чужие (как раньше, sender=админ);
+#   • разрешено ли вообще — Post.can_story_publish(user, get_reason=True) и хотя бы один свой
+#     опубликованный post (как в select_ebloscope);
+#   • такая же история уже есть (тот же заголовок и текст) — в списке помечена «уже на ярмарке»,
+#     post_to_story её и так отклонит;
+#   • цена — SiteParams scope_price или settings.ALTERMONEY_CONST["story_price"];
+#     длина девиза — Post.SLOGAN_SIZE.
+#
+# Оплата — через API (payment.py), в одной транзакции с размещением:
+#   1) строка профиля блокируется (select_for_update) — два одновременных размещения одного
+#      пользователя проходят по очереди;
+#   2) проверки Post.can_story_publish (баланс, лимиты) — уже под блокировкой, с балансом из базы;
+#      не is_staff — Transaction.scope_pay(user, post); is_staff — бесплатно;
+#   3) post.post_to_story(slogan, sender=…) — старая логика как есть (смена типа, story_date, save()).
+#   Любая ошибка на шаге 2–3 — откат всего: и списания, и размещения.
+#
+#   ВРЕМЕННО литы списываются ДВАЖДЫ — здесь и в Post.save() (блок «списание_литов_за_публикацию_в_еблоскоп»),
+#   как договорились: пока остров включён только у вас (админ — бесплатно в обоих местах).
+#   Перед включением для всех отключите этот блок в Post.save().
+#
+# Зависимость: api/feed (cards._author, _categories, _excerpt) — уже на сервере.
+#
+# Подключение: пакет api/story/ (п. 1–6), в api/urls.py — path('story/', include('api.story.urls')),
+# в INSTALLED_APPS не добавлять. Места «ПРОВЕРЬТЕ» — допущения, которые нужно сверить с кодом.
