@@ -134,6 +134,11 @@
 .als-ring-seen {
   stroke: #d9d2c2;
   stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 270.2;
+  transform-box: view-box;
+  transform-origin: 45px 45px;
+  transform: rotate(-90deg);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -148,23 +153,21 @@
   transition: opacity 0.3s;
 }
 
-/* появление в ленте — как в Instagram: аватар мягко «выпрыгивает», цветной круг обегает его
-   от верха по часовой. Каждый кружок — когда он впервые виден в ленте (листаешь дальше или
+/* появление в ленте — как в Instagram: аватар мягко «выпрыгивает», круг обегает его
+   от верха по часовой (цветной, у просмотренных — серый). Каждый кружок — когда он впервые виден в ленте (листаешь дальше или
    лента стала компактной — новые появляются так же), соседи — волной с шагом 70 мс.
    Задержку (--als-delay) и data-shown ставит Fair.tsx. fill-mode backwards: после анимации
    не мешает увеличению при наведении. */
-.als-item[data-reveal]:not([data-shown]) .als-avatar,
-.als-item[data-reveal]:not([data-shown]) .als-name {
+.als-item[data-reveal]:not([data-shown]) .als-avatar {
   opacity: 0;
 }
 .als-item[data-shown] .als-avatar {
   animation: als-pop 0.5s cubic-bezier(0.3, 0.7, 0.4, 1.35) var(--als-delay, 0ms) backwards;
 }
-.als-item[data-shown] .als-ring-color {
+/* и цветной круг, и серый у просмотренных */
+.als-item[data-shown] .als-ring-color,
+.als-item[data-shown] .als-ring-seen {
   animation: als-ring 0.9s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--als-delay, 0ms) + 0.12s) backwards;
-}
-.als-item[data-shown] .als-name {
-  animation: als-name 0.4s ease-out calc(var(--als-delay, 0ms) + 0.15s) backwards;
 }
 @keyframes als-pop {
   from {
@@ -180,12 +183,6 @@
   to {
     stroke-dashoffset: 0;
     transform: rotate(-90deg);
-  }
-}
-@keyframes als-name {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
   }
 }
 .als-avatar[data-seen] .als-ring-color {
@@ -1073,7 +1070,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .als-item[data-shown] .als-avatar,
-  .als-item[data-shown] .als-name,
+  .als-item[data-shown] .als-ring-seen,
   .als-item[data-shown] .als-ring-color,
   .als-item[data-fresh],
   .als-tip,
