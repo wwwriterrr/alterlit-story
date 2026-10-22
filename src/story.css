@@ -45,6 +45,8 @@
   scroll-padding-inline: var(--als-edge);
   scrollbar-width: none;
   overscroll-behavior-x: contain;
+  /* без «якорения»: «+» или новая история, вставленные слева, не сдвигают ленту */
+  overflow-anchor: none;
   -webkit-overflow-scrolling: touch;
   /* края гаснут только там, куда ещё можно листать */
   mask-image: linear-gradient(
@@ -56,6 +58,16 @@
   );
 }
 .als-list::-webkit-scrollbar {
+  display: none;
+}
+/* скелетон не листается: ни пальцем, ни колесом, ни стрелками (они скрыты) */
+.als-list[aria-busy='true'] {
+  overflow-x: hidden;
+  touch-action: pan-y;
+  /* и не «прилипает»: иначе после вставки «+» браузер прижал бы ленту к первому скелетону */
+  scroll-snap-type: none;
+}
+.als-wrap[data-loading] .als-arrow {
   display: none;
 }
 .als-wrap[data-prev] .als-list {
@@ -82,7 +94,7 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  width: calc(var(--als-size) + 14px);
+  width: calc(var(--als-size) + var(--als-pad, 14px));
   margin: 0;
   padding: 0;
   border: 0;
@@ -233,7 +245,7 @@
   }
 }
 
-/* «+»: свой аватар в пунктирном янтарном круге и значок «+» — как «Ваша история» */
+/* «+» (только вошедшим): свой аватар в пунктирном янтарном круге и значок «+» — как «Ваша история» */
 .als-plus-ring {
   stroke: var(--als-amber);
   stroke-width: 2.4;
@@ -255,11 +267,6 @@
 }
 .als-add .als-link:hover .als-plus .als-photo {
   filter: brightness(0.92);
-}
-/* гость — пустой круг с мягкой подложкой, «+» крупно по центру */
-.als-plus-empty {
-  display: block;
-  background: radial-gradient(circle at 35% 30%, #fff8ea, #f6e9cf);
 }
 .als-plus-badge {
   position: absolute;
@@ -289,18 +296,6 @@
 .als-add .als-link:hover .als-plus-badge,
 .als-add .als-link:focus-visible .als-plus-badge {
   transform: rotate(90deg) scale(1.08);
-}
-.als-plus[data-guest] .als-plus-badge {
-  right: 50%;
-  bottom: 50%;
-  width: 40%;
-  height: 40%;
-  border: 0;
-  box-shadow: 0 3px 10px rgba(180, 122, 28, 0.35);
-  transform: translate(50%, 50%);
-}
-.als-add .als-link:hover .als-plus[data-guest] .als-plus-badge {
-  transform: translate(50%, 50%) rotate(90deg) scale(1.08);
 }
 .als-add .als-name {
   color: var(--als-muted);
@@ -428,7 +423,9 @@
     rgba(253, 248, 239, 0) 100%
   );
   transition: transform 0.35s cubic-bezier(0.3, 0.7, 0.4, 1);
-  --als-size: calc(var(--als-size-base) * 0.66);
+  /* компактно, но не меньше 52px — с запасом к минимальной зоне нажатия пальцем (44–48px) */
+  --als-size: clamp(52px, calc(var(--als-size-base) * 0.75), 62px);
+  --als-pad: 10px;
 }
 .als-wrap[data-dock='hidden'] {
   transform: translateY(calc(-100% - var(--als-top, 0px) - 10px));
@@ -525,7 +522,7 @@
   border-radius: 50%;
 }
 
-/* размеры — как у старой ярмарки */
+/* размеры — как у старой ярмарки, кроме 769–1350px (там кружки крупнее) */
 @media screen and (max-width: 1650px) {
   #alterlit-story {
     --als-size-base: 80px;
@@ -539,14 +536,10 @@
     gap: 3px;
   }
 }
+/* ноутбуки и планшеты: 64px вместо 56/50 — по кружку легко попасть и мышью, и пальцем */
 @media screen and (max-width: 1350px) {
   #alterlit-story {
-    --als-size-base: 56px;
-  }
-}
-@media screen and (max-width: 1100px) {
-  #alterlit-story {
-    --als-size-base: 50px;
+    --als-size-base: 64px;
   }
 }
 @media screen and (max-width: 1024px) {
@@ -565,6 +558,8 @@
     --als-size-base: 70px;
     --als-gap: 6px;
     --als-edge: 14px;
+    /* уже подпись — пятый кружок виден наполовину: понятно, что ленту можно листать */
+    --als-pad: 8px;
   }
   .als-name {
     font-size: 12px;
@@ -1702,5 +1697,19 @@
   .als-v-skel span,
   .als-v-skel-line {
     animation: none;
+  }
+}
+
+/* Место над лентой: шаблон главной оставляет его переменной --pad-top (#alterlit) под старые
+   кружки 56/50px. Кружки там теперь 64px — прибавляем столько же. html:root — вес больше, чем
+   у :root в шаблоне; :has — только на странице с островом. */
+@media screen and (max-width: 1350px) and (min-width: 769px) {
+  html:root:has(#alterlit-story) {
+    --pad-top: 78px;
+  }
+}
+@media screen and (max-width: 1100px) and (min-width: 769px) {
+  html:root:has(#alterlit-story) {
+    --pad-top: 84px;
   }
 }

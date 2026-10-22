@@ -44,6 +44,8 @@ export function useScroller(ref: RefObject<HTMLElement | null>, deps: unknown[])
 
     const down = (e: PointerEvent) => {
       if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      // скелетон не листается
+      if (el.getAttribute('aria-busy') === 'true') return;
       id = e.pointerId;
       startX = e.clientX;
       startLeft = el.scrollLeft;

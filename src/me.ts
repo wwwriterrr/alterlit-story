@@ -16,8 +16,9 @@ function loadMe() {
   return pending;
 }
 
+/** undefined — ещё не знаем (запрос идёт), null — гость. */
 export function useMe() {
-  const [me, setMe] = useState<Me | null>(null);
+  const [me, setMe] = useState<Me | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;
     loadMe().then((m) => alive && setMe(m));

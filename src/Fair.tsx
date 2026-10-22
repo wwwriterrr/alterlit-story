@@ -10,7 +10,8 @@ import { isSeen, markSeen } from './seen';
 import { useScroller } from './useScroller';
 import { useDock } from './useDock';
 
-const SKELETONS = 12;
+/** скелетон — по числу историй: на широком экране ряд заполнен до края */
+const SKELETONS = 20;
 /** на главной — только 20 последних историй */
 const LIMIT = 20;
 const HOVER_DELAY = 250;
@@ -31,13 +32,18 @@ export default function Fair({ root }: { root: HTMLElement }) {
   const pushed = useRef(false);
   const [, setSeenTick] = useState(0);
 
+  const dock = useDock(root);
+  // undefined — ещё не знаем, вошёл ли: кружки пока скелетоном, чтобы «+» потом не сдвинул ленту
+  const me = useMe();
+  const ready = status === 'ready' && me !== undefined;
+
   const listRef = useRef<HTMLUListElement>(null);
-  const { prev: canPrev, next: canNext, page } = useScroller(listRef, [items.length, status]);
+  const { prev: canPrev, next: canNext, page } = useScroller(listRef, [items.length, ready]);
 
   // появление кружков — когда кружок впервые виден в ленте; кто стал виден вместе — волной
   useEffect(() => {
     const list = listRef.current;
-    if (!list || status !== 'ready') return;
+    if (!list || !ready) return;
     const io = new IntersectionObserver(
       (entries) => {
         const seen = entries
@@ -54,9 +60,7 @@ export default function Fair({ root }: { root: HTMLElement }) {
     );
     list.querySelectorAll<HTMLElement>('.als-item[data-reveal]:not([data-shown])').forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, [items, status]);
-  const dock = useDock(root);
-  const me = useMe();
+  }, [items, ready]);
 
   const load = useCallback(() => {
     setStatus('loading');
@@ -217,37 +221,35 @@ export default function Fair({ root }: { root: HTMLElement }) {
   };
 
   return (
-    <div className="als-wrap" data-dock={dock} data-prev={canPrev || undefined} data-next={canNext || undefined}>
-      <ul ref={listRef} className="als-list" aria-label="Ярмарка тщеславия" aria-busy={status === 'loading'}>
-        <li className="als-item als-add">
-          <button
-            type="button"
-            className="als-link"
-            onClick={() => setAdding(true)}
-            aria-haspopup="dialog"
-            title="Разместить свою публикацию на Ярмарке тщеславия"
-          >
-            {/* своя «история»: свой аватар в пунктирном круге и значок «+», у гостя — только «+» */}
-            <span className="als-avatar als-plus" data-guest={me ? undefined : ''}>
-              <svg className="als-ring" viewBox="0 0 90 90" aria-hidden="true">
-                <circle className="als-plus-ring" cx="45" cy="45" r="43" />
-              </svg>
-              {me ? (
-                <img className="als-photo" src={me.avatar || NO_AVATAR} alt="" draggable={false} />
-              ) : (
-                <span className="als-photo als-plus-empty" />
-              )}
-              <span className="als-plus-badge" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 6v12M6 12h12" />
+    <div className="als-wrap" data-loading={!ready || undefined} data-dock={dock} data-prev={canPrev || undefined} data-next={canNext || undefined}>
+      <ul ref={listRef} className="als-list" aria-label="Ярмарка тщеславия" aria-busy={!ready && status !== 'error'}>
+        {/* «+» — только вошедшим: свой аватар в пунктирном круге и значок «+» */}
+        {me ? (
+          <li className="als-item als-add">
+            <button
+              type="button"
+              className="als-link"
+              onClick={() => setAdding(true)}
+              aria-haspopup="dialog"
+              title="Разместить свою публикацию на Ярмарке тщеславия"
+            >
+              <span className="als-avatar als-plus">
+                <svg className="als-ring" viewBox="0 0 90 90" aria-hidden="true">
+                  <circle className="als-plus-ring" cx="45" cy="45" r="43" />
                 </svg>
+                <img className="als-photo" src={me.avatar || NO_AVATAR} alt="" draggable={false} />
+                <span className="als-plus-badge" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 6v12M6 12h12" />
+                  </svg>
+                </span>
               </span>
-            </span>
-            <span className="als-name">Разместить</span>
-          </button>
-        </li>
+              <span className="als-name">Разместить</span>
+            </button>
+          </li>
+        ) : null}
 
-        {status === 'loading'
+        {!ready && status !== 'error'
           ? Array.from({ length: SKELETONS }, (_, i) => <SkeletonItem key={i} />)
           : items.map((s) => (
               <li key={s.id} className="als-item" data-reveal="" data-fresh={s.id === fresh || undefined}>
